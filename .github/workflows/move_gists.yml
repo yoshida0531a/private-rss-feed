@@ -1,0 +1,33 @@
+name: Move Gists and Generate RSS
+
+on:
+  schedule:
+    - cron: "0 8,12 * * *"
+  workflow_dispatch:
+
+jobs:
+  move-gists:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリをチェックアウト
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. 必要なツールをインストール
+      - name: Setup dependencies
+        run: sudo apt-get install -y jq curl
+
+      # 3. Gistを取得してRSSを生成（スクリプト呼び出し）
+      - name: Fetch and generate RSS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: bash scripts/fetch_and_generate_rss.sh
+
+      # 4. Gistを削除
+      - name: Delete Gists
+        run: |
+          jq -r '.[].id' gists.json | while read -r id; do
+            curl -X DELETE -H "Authorization: token $GIST_TOKEN" https://api.github.com/gists/$id || echo "Failed to delete Gist ID: $id"
+          done
